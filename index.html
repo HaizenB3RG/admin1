@@ -1431,8 +1431,11 @@
                     : '';
                 
                 const rejectButton = submission.status === 'pending'
-                    ? `<button class="btn-export" onclick="rejectExpenses('${submission.firebaseKey}')" style="background: #ef4444;">❌ Reject</button>`
+                    ? `<button class="btn-export" onclick="rejectExpenses('${submission.firebaseKey}')" style="background: #ef4444; margin-right: 10px;">❌ Reject</button>`
                     : '';
+                
+                // Delete button is always available
+                const deleteButton = `<button class="btn-export" onclick="deleteExpenses('${submission.firebaseKey}')" style="background: #6b7280;">🗑️ Delete</button>`;
                 
                 // Group expenses by type
                 const repairExpenses = submission.expenses.filter(e => e.type === 'repair');
@@ -1531,6 +1534,7 @@
                             <div>
                                 ${approveButton}
                                 ${rejectButton}
+                                ${deleteButton}
                             </div>
                         </div>
                     </div>
@@ -1564,6 +1568,22 @@
             } catch (error) {
                 console.error('❌ Reject error:', error);
                 await customAlert('Could not reject expenses', '❌');
+            }
+        }
+        
+        // Delete expenses
+        window.deleteExpenses = async function(firebaseKey) {
+            const confirmed = await customConfirm('🗑️ Permanently delete these expenses?\n\nThis action cannot be undone.', '⚠️');
+            if (!confirmed) return;
+            
+            try {
+                const submissionRef = window.firebaseRef(window.firebaseDB, 'expenseSubmissions_v2/' + firebaseKey);
+                await window.firebaseRemove(submissionRef);
+                console.log('🗑️ Expenses deleted!');
+                await customAlert('Expenses have been permanently deleted', '🗑️');
+            } catch (error) {
+                console.error('❌ Delete error:', error);
+                await customAlert('Could not delete expenses', '❌');
             }
         }
         
