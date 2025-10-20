@@ -726,7 +726,7 @@
         let viewedSubmissions = new Set(); // Track which submissions admin has viewed
         
         // Helper function to get relative time
-        function getRelativeTime(timestamp) {
+        window.getRelativeTime = function(timestamp) {
             const now = Date.now();
             const diff = now - timestamp;
             const minutes = Math.floor(diff / (1000 * 60));
@@ -740,14 +740,14 @@
         }
         
         // Check if submission is new (within last 24 hours)
-        function isNewSubmission(timestamp) {
+        window.isNewSubmission = function(timestamp) {
             const now = Date.now();
             const diff = now - timestamp;
             return diff < (24 * 60 * 60 * 1000); // 24 hours in milliseconds
         }
         
         // Mark submission as viewed
-        function markSubmissionAsViewed(timestamp) {
+        window.markSubmissionAsViewed = function(timestamp) {
             console.log('🔍 DEBUG: Marking submission as viewed:', timestamp);
             viewedSubmissions.add(timestamp);
             localStorage.setItem('viewedSubmissions', JSON.stringify([...viewedSubmissions]));
@@ -755,7 +755,7 @@
         }
         
         // Load viewed submissions from localStorage
-        function loadViewedSubmissions() {
+        window.loadViewedSubmissions = function() {
             const stored = localStorage.getItem('viewedSubmissions');
             if (stored) {
                 viewedSubmissions = new Set(JSON.parse(stored));
