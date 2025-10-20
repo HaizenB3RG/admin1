@@ -707,6 +707,15 @@
         }
         
         
+        // Date formatting helper - DD/MM/YYYY format
+        function formatDate(dateInput) {
+            const date = new Date(dateInput);
+            const day = String(date.getDate()).padStart(2, '0');
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const year = date.getFullYear();
+            return `${day}/${month}/${year}`;
+        }
+        
         // Global variables for app state
         let currentFilter = 'today';
         let allSubmissions = [];
@@ -914,17 +923,15 @@
             const sorted = [...filteredSubmissions].sort((a, b) => b.timestamp - a.timestamp);
 
             container.innerHTML = sorted.map((sub) => {
-                const date = new Date(sub.date);
-                const dateStr = date.toLocaleDateString('en-US', { 
-                    weekday: 'short', 
-                    year: 'numeric', 
-                    month: 'short', 
-                    day: 'numeric' 
-                });
-                const timeStr = date.toLocaleTimeString('en-US', { 
-                    hour: '2-digit', 
-                    minute: '2-digit' 
-                });
+                // Submission date (when it was created/submitted)
+                const submissionDate = new Date(sub.timestamp || sub.date);
+                const submissionDateStr = formatDate(submissionDate);
+                const submissionTimeStr = submissionDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                
+                // Work date (actual date of the work - from first session)
+                const workDateStr = sub.sessions && sub.sessions[0] && sub.sessions[0].workDate 
+                    ? formatDate(new Date(sub.sessions[0].workDate))
+                    : submissionDateStr;
 
                 const status = sub.status || 'pending';
                 const statusBadge = status === 'approved' 
@@ -978,7 +985,7 @@
                                 const pDate = new Date(p.date);
                                 return `<div style="font-size: 11px; color: #64748b; padding: 2px 0; display: flex; justify-content: space-between;">
                                     <span>✅ ${p.amount.toFixed(2)} MAD</span>
-                                    <span>${pDate.toLocaleDateString()} ${pDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                                    <span>${formatDate(pDate)} ${pDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
                                 </div>`;
                             }).join('')}
                         </div>
@@ -995,7 +1002,9 @@
                         <div class="submission-header">
                             <div>
                                 <div class="worker-name">👷 ${sub.workerName}</div>
-                                <div class="submission-date">${dateStr} at ${timeStr}</div>
+                                <div class="submission-date">
+                                    📅 Work: ${workDateStr} ${workDateStr !== submissionDateStr ? `<span style="color: #94a3b8; font-size: 11px;">| Submitted: ${submissionDateStr} ${submissionTimeStr}</span>` : `<span style="color: #94a3b8; font-size: 11px;">at ${submissionTimeStr}</span>`}
+                                </div>
                             </div>
                             <div>
                                 ${statusBadge}
@@ -1312,7 +1321,7 @@
             let csv = 'Date,Worker Name,Job,Hours,Payment (MAD)\n';
             
             allSubmissions.forEach(sub => {
-                const date = new Date(sub.date).toLocaleDateString();
+                const date = formatDate(new Date(sub.date || sub.timestamp));
                 sub.sessions.forEach(session => {
                     csv += `${date},${sub.workerName},${session.job},${formatDuration(session.duration)},${session.payment}\n`;
                 });
@@ -1414,8 +1423,8 @@
             const sorted = [...submissions].sort((a, b) => b.timestamp - a.timestamp);
             
             container.innerHTML = sorted.map(submission => {
-                const date = new Date(submission.date).toLocaleDateString();
-                const time = new Date(submission.date).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
+                const date = formatDate(new Date(submission.date || submission.timestamp));
+                const time = new Date(submission.date || submission.timestamp).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
                 
                 let statusBadge;
                 if (submission.status === 'approved') {
@@ -1449,7 +1458,7 @@
                         <div style="background: #fef2f2; padding: 12px; border-radius: 8px; margin-bottom: 10px; border-left: 4px solid #ef4444;">
                             <div style="font-size: 14px; font-weight: 600; color: #991b1b; margin-bottom: 8px;">🔧 Repairs (${repairExpenses.length})</div>
                             ${repairExpenses.map(exp => {
-                                const expDate = new Date(exp.date).toLocaleDateString();
+                                const expDate = formatDate(new Date(exp.date));
                                 return `
                                     <div style="display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #fecaca;">
                                         <div style="flex: 1;">
@@ -1471,7 +1480,7 @@
                         <div style="background: #fffbeb; padding: 12px; border-radius: 8px; margin-bottom: 10px; border-left: 4px solid #f59e0b;">
                             <div style="font-size: 14px; font-weight: 600; color: #92400e; margin-bottom: 8px;">⛽ Fuel (${fuelExpenses.length})</div>
                             ${fuelExpenses.map(exp => {
-                                const expDate = new Date(exp.date).toLocaleDateString();
+                                const expDate = formatDate(new Date(exp.date));
                                 return `
                                     <div style="display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #fde68a;">
                                         <div style="flex: 1;">
@@ -1493,7 +1502,7 @@
                         <div style="background: #f5f3ff; padding: 12px; border-radius: 8px; margin-bottom: 10px; border-left: 4px solid #8b5cf6;">
                             <div style="font-size: 14px; font-weight: 600; color: #6b21a8; margin-bottom: 8px;">⚙️ Parts (${partsExpenses.length})</div>
                             ${partsExpenses.map(exp => {
-                                const expDate = new Date(exp.date).toLocaleDateString();
+                                const expDate = formatDate(new Date(exp.date));
                                 return `
                                     <div style="display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #ddd6fe;">
                                         <div style="flex: 1;">
