@@ -932,7 +932,7 @@
             updateStats(filtered);
         }
 
-        function renderSubmissions(submissions) {
+        window.renderSubmissions = function(submissions) {
             const container = document.getElementById('submissions-list');
 
             // Categorize all submissions first
@@ -1458,7 +1458,7 @@
         }
         
         // Render expense submissions
-        function renderExpenseSubmissions(submissions) {
+        window.renderExpenseSubmissions = function(submissions) {
             const container = document.getElementById('expenses-list');
             
             if (submissions.length === 0) {
