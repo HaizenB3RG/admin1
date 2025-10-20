@@ -681,6 +681,9 @@
             console.log('📱 Admin App Version: 6.0.0 (FIX: Work dates display correctly, DD/MM/YYYY format, Delete expenses, Parts notes visible)');
             console.log('🕐 Loaded at:', new Date().toLocaleString());
             
+            // Load viewed submissions from localStorage
+            loadViewedSubmissions();
+            
             // Request notification permission on load
             if ('Notification' in window && Notification.permission === 'default') {
                 setTimeout(() => {
@@ -720,6 +723,42 @@
         let currentFilter = 'today';
         let allSubmissions = [];
         let adminTab = 'active'; // Track which tab is active (active or completed)
+        let viewedSubmissions = new Set(); // Track which submissions admin has viewed
+        
+        // Helper function to get relative time
+        function getRelativeTime(timestamp) {
+            const now = Date.now();
+            const diff = now - timestamp;
+            const minutes = Math.floor(diff / (1000 * 60));
+            const hours = Math.floor(diff / (1000 * 60 * 60));
+            const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+            
+            if (minutes < 1) return 'Just now';
+            if (minutes < 60) return `${minutes}m ago`;
+            if (hours < 24) return `${hours}h ago`;
+            return `${days}d ago`;
+        }
+        
+        // Check if submission is new (within last 24 hours)
+        function isNewSubmission(timestamp) {
+            const now = Date.now();
+            const diff = now - timestamp;
+            return diff < (24 * 60 * 60 * 1000); // 24 hours in milliseconds
+        }
+        
+        // Mark submission as viewed
+        function markSubmissionAsViewed(timestamp) {
+            viewedSubmissions.add(timestamp);
+            localStorage.setItem('viewedSubmissions', JSON.stringify([...viewedSubmissions]));
+        }
+        
+        // Load viewed submissions from localStorage
+        function loadViewedSubmissions() {
+            const stored = localStorage.getItem('viewedSubmissions');
+            if (stored) {
+                viewedSubmissions = new Set(JSON.parse(stored));
+            }
+        }
         
         // Switch between Active and Completed tabs
         function switchAdminTab(tab) {
@@ -938,6 +977,12 @@
                     ? '<span style="background: #d1fae5; color: #065f46; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 600;">✅ APPROVED</span>'
                     : '<span style="background: #fef3c7; color: #92400e; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 600;">⏳ PENDING</span>';
 
+                // NEW badge logic
+                const isNew = isNewSubmission(sub.timestamp) && !viewedSubmissions.has(sub.timestamp);
+                const newBadge = isNew 
+                    ? `<span style="background: #10b981; color: white; padding: 4px 8px; border-radius: 4px; font-size: 10px; font-weight: 600; margin-left: 8px;">🆕 NEW (${getRelativeTime(sub.timestamp)})</span>`
+                    : '';
+
                 const approveButton = status === 'pending' 
                     ? `<button class="btn-export" onclick="approveSubmission('${sub.firebaseKey}')" style="background: #10b981; margin-right: 10px;">Approve</button>`
                     : '';
@@ -998,10 +1043,10 @@
                     : '';
 
                 return `
-                    <div class="submission-item">
+                    <div class="submission-item" onclick="markSubmissionAsViewed(${sub.timestamp})" style="cursor: pointer;">
                         <div class="submission-header">
                             <div>
-                                <div class="worker-name">👷 ${sub.workerName}</div>
+                                <div class="worker-name">👷 ${sub.workerName}${newBadge}</div>
                                 <div class="submission-date">
                                     📅 Work: ${workDateStr} ${workDateStr !== submissionDateStr ? `<span style="color: #94a3b8; font-size: 11px;">| Submitted: ${submissionDateStr} ${submissionTimeStr}</span>` : `<span style="color: #94a3b8; font-size: 11px;">at ${submissionTimeStr}</span>`}
                                 </div>
@@ -1308,6 +1353,13 @@
             try {
                 const submissionRef = window.firebaseRef(window.firebaseDB, 'submissions_v2/' + firebaseKey);
                 await window.firebaseUpdate(submissionRef, { status: 'approved' });
+                
+                // Mark as viewed when approved
+                const submission = allSubmissions.find(s => s.firebaseKey === firebaseKey);
+                if (submission) {
+                    markSubmissionAsViewed(submission.timestamp);
+                }
+                
                 console.log('✅ Submission approved!');
             } catch (error) {
                 console.error('❌ Approve error:', error);
@@ -1520,11 +1572,17 @@
                     `;
                 }
                 
+                // NEW badge logic for expenses
+                const isNewExpense = isNewSubmission(submission.timestamp) && !viewedSubmissions.has(submission.timestamp);
+                const newExpenseBadge = isNewExpense 
+                    ? `<span style="background: #10b981; color: white; padding: 4px 8px; border-radius: 4px; font-size: 10px; font-weight: 600; margin-left: 8px;">🆕 NEW (${getRelativeTime(submission.timestamp)})</span>`
+                    : '';
+
                 return `
-                    <div class="submission-item" style="border-left-color: #f59e0b;">
+                    <div class="submission-item" style="border-left-color: #f59e0b;" onclick="markSubmissionAsViewed(${submission.timestamp})" style="cursor: pointer;">
                         <div class="submission-header">
                             <div>
-                                <div class="worker-name">👷 ${submission.workerName}</div>
+                                <div class="worker-name">👷 ${submission.workerName}${newExpenseBadge}</div>
                                 <div class="submission-date">📅 ${date} ${time}</div>
                             </div>
                             <div>
