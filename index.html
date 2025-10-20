@@ -748,8 +748,10 @@
         
         // Mark submission as viewed
         function markSubmissionAsViewed(timestamp) {
+            console.log('🔍 DEBUG: Marking submission as viewed:', timestamp);
             viewedSubmissions.add(timestamp);
             localStorage.setItem('viewedSubmissions', JSON.stringify([...viewedSubmissions]));
+            console.log('🔍 DEBUG: Viewed submissions:', [...viewedSubmissions]);
         }
         
         // Load viewed submissions from localStorage
@@ -1043,8 +1045,8 @@
                     : '';
 
                 return `
-                    <div class="submission-item" onclick="markSubmissionAsViewed(${sub.timestamp})" style="cursor: pointer;">
-                        <div class="submission-header">
+                    <div class="submission-item">
+                        <div class="submission-header" onclick="markSubmissionAsViewed(${sub.timestamp}); renderSubmissions(allSubmissions);" style="cursor: pointer;">
                             <div>
                                 <div class="worker-name">👷 ${sub.workerName}${newBadge}</div>
                                 <div class="submission-date">
@@ -1579,8 +1581,8 @@
                     : '';
 
                 return `
-                    <div class="submission-item" style="border-left-color: #f59e0b;" onclick="markSubmissionAsViewed(${submission.timestamp})" style="cursor: pointer;">
-                        <div class="submission-header">
+                    <div class="submission-item" style="border-left-color: #f59e0b;">
+                        <div class="submission-header" onclick="markSubmissionAsViewed(${submission.timestamp}); renderExpenseSubmissions();" style="cursor: pointer;">
                             <div>
                                 <div class="worker-name">👷 ${submission.workerName}${newExpenseBadge}</div>
                                 <div class="submission-date">📅 ${date} ${time}</div>
