@@ -720,8 +720,8 @@
         }
         
         // Global variables for app state
-        let currentFilter = 'today';
-        let allSubmissions = [];
+        window.currentFilter = 'today'; // Make global so onclick handlers can access it
+        window.allSubmissions = []; // Make global so onclick handlers can access it
         let adminTab = 'active'; // Track which tab is active (active or completed)
         let viewedSubmissions = new Set(); // Track which submissions admin has viewed
         
@@ -789,7 +789,7 @@
             }
             
             // Re-render submissions with current filters
-            renderSubmissions(allSubmissions);
+            renderSubmissions(window.allSubmissions);
         }
         
         window.switchAdminTab = switchAdminTab;
@@ -829,9 +829,9 @@
             
             window.firebaseOnValue(submissionsRef, (snapshot) => {
                 console.log('🔄 Firebase data updated!');
-                const previousCount = allSubmissions.length;
+                const previousCount = window.allSubmissions.length;
                 firebaseSubmissions = {};
-                allSubmissions = [];
+                window.allSubmissions = [];
                 
                 if (snapshot.exists()) {
                     const data = snapshot.val();
@@ -847,17 +847,17 @@
                         }
                         
                         firebaseSubmissions[key] = submission;
-                        allSubmissions.push({
+                        window.allSubmissions.push({
                             ...submission,
                             firebaseKey: key
                         });
                     });
-                    console.log('✅ Loaded ' + allSubmissions.length + ' submissions from Firebase');
+                    console.log('✅ Loaded ' + window.allSubmissions.length + ' submissions from Firebase');
                     
                     // Check for new submissions and send notification
-                    if (previousCount > 0 && allSubmissions.length > previousCount) {
+                    if (previousCount > 0 && window.allSubmissions.length > previousCount) {
                         // New submission detected!
-                        const newSubmission = allSubmissions[allSubmissions.length - 1];
+                        const newSubmission = window.allSubmissions[window.allSubmissions.length - 1];
                         console.log('🔔 New submission detected!', newSubmission);
                         showNotification(newSubmission);
                     }
@@ -865,7 +865,7 @@
                     console.log('ℹ️ No submissions in Firebase yet');
                 }
                 
-                filterSubmissions(currentFilter);
+                filterSubmissions(window.currentFilter);
             }, async (error) => {
                 console.error('❌ Firebase error:', error);
                 await customAlert('Could not connect to Firebase. Check internet connection.', '❌');
@@ -888,13 +888,13 @@
 
             // Copy submissions to admin storage
             localStorage.setItem('adminSubmissions', JSON.stringify(parsed.submissions));
-            allSubmissions = parsed.submissions;
-            filterSubmissions(currentFilter);
+            window.allSubmissions = parsed.submissions;
+            filterSubmissions(window.currentFilter);
             await customAlert('✅ Loaded ' + parsed.submissions.length + ' submissions from worker app!', '✅');
         }
 
         window.filterSubmissions = function(period, clickEvent) {
-            currentFilter = period;
+            window.currentFilter = period;
             
             // Update active button
             document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
@@ -915,17 +915,17 @@
             }
 
             const now = new Date();
-            let filtered = allSubmissions;
+            let filtered = window.allSubmissions;
 
             if (period === 'today') {
                 const today = now.toDateString();
-                filtered = allSubmissions.filter(s => new Date(s.date).toDateString() === today);
+                filtered = window.allSubmissions.filter(s => new Date(s.date).toDateString() === today);
             } else if (period === 'week') {
                 const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-                filtered = allSubmissions.filter(s => new Date(s.date) >= weekAgo);
+                filtered = window.allSubmissions.filter(s => new Date(s.date) >= weekAgo);
             } else if (period === 'month') {
                 const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-                filtered = allSubmissions.filter(s => new Date(s.date) >= monthAgo);
+                filtered = window.allSubmissions.filter(s => new Date(s.date) >= monthAgo);
             }
 
             renderSubmissions(filtered);
@@ -1046,7 +1046,7 @@
 
                 return `
                     <div class="submission-item">
-                        <div class="submission-header" onclick="markSubmissionAsViewed(${sub.timestamp}); renderSubmissions(allSubmissions);" style="cursor: pointer;">
+                        <div class="submission-header" onclick="markSubmissionAsViewed(${sub.timestamp}); filterSubmissions(currentFilter);" style="cursor: pointer;">
                             <div>
                                 <div class="worker-name">👷 ${sub.workerName}${newBadge}</div>
                                 <div class="submission-date">
@@ -1357,7 +1357,7 @@
                 await window.firebaseUpdate(submissionRef, { status: 'approved' });
                 
                 // Mark as viewed when approved
-                const submission = allSubmissions.find(s => s.firebaseKey === firebaseKey);
+                const submission = window.allSubmissions.find(s => s.firebaseKey === firebaseKey);
                 if (submission) {
                     markSubmissionAsViewed(submission.timestamp);
                 }
@@ -1370,11 +1370,11 @@
         }
 
         window.exportData = function() {
-            if (allSubmissions.length === 0) return;
+            if (window.allSubmissions.length === 0) return;
 
             let csv = 'Date,Worker Name,Job,Hours,Payment (MAD)\n';
             
-            allSubmissions.forEach(sub => {
+            window.allSubmissions.forEach(sub => {
                 const date = formatDate(new Date(sub.date || sub.timestamp));
                 sub.sessions.forEach(session => {
                     csv += `${date},${sub.workerName},${session.job},${formatDuration(session.duration)},${session.payment}\n`;
@@ -1393,31 +1393,31 @@
         // 💰 EXPENSES SUBMISSIONS
         // ========================================
         
-        let allExpenseSubmissions = [];
-        let currentExpenseFilter = 'today';
+        window.allExpenseSubmissions = []; // Make global
+        window.currentExpenseFilter = 'today'; // Make global so onclick handlers can access it
         
-        // Load expense submissions from Firebase
-        function loadExpenseSubmissions() {
+          // Load expense submissions from Firebase
+          window.loadExpenseSubmissions = function() {
             console.log('💰 Setting up expenses submissions listener...');
             const expensesRef = window.firebaseRef(window.firebaseDB, 'expenseSubmissions_v2');
             
             window.firebaseOnValue(expensesRef, (snapshot) => {
                 console.log('🔄 Expenses data updated!');
-                allExpenseSubmissions = [];
+                window.allExpenseSubmissions = [];
                 
                 if (snapshot.exists()) {
                     const data = snapshot.val();
                     Object.keys(data).forEach(key => {
                         const submission = data[key];
-                        allExpenseSubmissions.push({
+                        window.allExpenseSubmissions.push({
                             ...submission,
                             firebaseKey: key
                         });
                     });
-                    console.log(`✅ Loaded ${allExpenseSubmissions.length} expense submissions`);
-                    document.getElementById('expensesStatus').innerHTML = `💰 ${allExpenseSubmissions.length} Submissions`;
-                    document.getElementById('expensesSyncIndicator').style.background = allExpenseSubmissions.length > 0 ? '#fef3c7' : '#f3f4f6';
-                    document.getElementById('expensesSyncIndicator').style.color = allExpenseSubmissions.length > 0 ? '#92400e' : '#6b7280';
+                    console.log(`✅ Loaded ${window.allExpenseSubmissions.length} expense submissions`);
+                    document.getElementById('expensesStatus').innerHTML = `💰 ${window.allExpenseSubmissions.length} Submissions`;
+                    document.getElementById('expensesSyncIndicator').style.background = window.allExpenseSubmissions.length > 0 ? '#fef3c7' : '#f3f4f6';
+                    document.getElementById('expensesSyncIndicator').style.color = window.allExpenseSubmissions.length > 0 ? '#92400e' : '#6b7280';
                 } else {
                     console.log('📭 No expense submissions found');
                     document.getElementById('expensesStatus').innerHTML = '⏳ No Submissions';
@@ -1425,13 +1425,13 @@
                     document.getElementById('expensesSyncIndicator').style.color = '#6b7280';
                 }
                 
-                filterExpenses(currentExpenseFilter);
+                filterExpenses(window.currentExpenseFilter);
             });
         }
         
         // Filter expenses by period
         window.filterExpenses = function(period, clickEvent) {
-            currentExpenseFilter = period;
+            window.currentExpenseFilter = period;
             
             // Update active button
             if (clickEvent && clickEvent.target) {
@@ -1441,17 +1441,17 @@
             }
             
             const now = new Date();
-            let filtered = allExpenseSubmissions;
+            let filtered = window.allExpenseSubmissions;
             
             if (period === 'today') {
                 const today = now.toDateString();
-                filtered = allExpenseSubmissions.filter(s => new Date(s.date).toDateString() === today);
+                filtered = window.allExpenseSubmissions.filter(s => new Date(s.date).toDateString() === today);
             } else if (period === 'week') {
                 const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-                filtered = allExpenseSubmissions.filter(s => new Date(s.date) >= weekAgo);
+                filtered = window.allExpenseSubmissions.filter(s => new Date(s.date) >= weekAgo);
             } else if (period === 'month') {
                 const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-                filtered = allExpenseSubmissions.filter(s => new Date(s.date) >= monthAgo);
+                filtered = window.allExpenseSubmissions.filter(s => new Date(s.date) >= monthAgo);
             }
             
             renderExpenseSubmissions(filtered);
@@ -1582,7 +1582,7 @@
 
                 return `
                     <div class="submission-item" style="border-left-color: #f59e0b;">
-                        <div class="submission-header" onclick="markSubmissionAsViewed(${submission.timestamp}); renderExpenseSubmissions();" style="cursor: pointer;">
+                        <div class="submission-header" onclick="markSubmissionAsViewed(${submission.timestamp}); filterExpenses(currentExpenseFilter);" style="cursor: pointer;">
                             <div>
                                 <div class="worker-name">👷 ${submission.workerName}${newExpenseBadge}</div>
                                 <div class="submission-date">📅 ${date} ${time}</div>
